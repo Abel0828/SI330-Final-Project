@@ -405,7 +405,7 @@ def split(unvss):
 
 def train_predict(unvss):
     unvss,test_unvss=split(unvss)
-    dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=100)
+    dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=300)
     #dtr=tree.DecisionTreeRegressor(max_depth=3)
     
     X=[]
@@ -425,21 +425,15 @@ def train_predict(unvss):
     dtr.fit(X,y)
     z=dtr.predict(X)
     test_z=dtr.predict(test_X)
-
-    dotfile = open("./dtree.dot", 'w+')
-    tree.export_graphviz(dtr, out_file = dotfile)
-    dotfile.close()
-    system("dot -Tpng ./dtree.dot -o ./dtree.png")
-
     
     plt.figure()
     plt.scatter(y, z, c="k", marker='.', label="trained model")
-    plt.scatter(test_y, test_z, c="r", marker='.', label="prediction result")
-    plt.xlabel("groud truth")
+    plt.scatter(test_y, test_z, c="r", marker='.', label="predicted endowment")
+    plt.xlabel("actual endowment")
     plt.ylabel("prediction")
-    plt.title("Decision Tree Regression")
+    plt.title("Adaboost Training Result")
     plt.legend()
-    #plt.show()
+    plt.show()
 
     
 if __name__=='__main__':
