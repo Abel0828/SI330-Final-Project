@@ -405,8 +405,8 @@ def split(unvss):
 
 def train_predict(unvss):
     unvss,test_unvss=split(unvss)
-    #dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=100)
-    dtr=tree.DecisionTreeRegressor(max_depth=3)
+    dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=100)
+    #dtr=tree.DecisionTreeRegressor(max_depth=3)
     
     X=[]
     y=[]
