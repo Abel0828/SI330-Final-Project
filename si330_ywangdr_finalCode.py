@@ -7,10 +7,6 @@ import csv
 from sklearn import tree
 from sklearn import svm
 from sklearn.ensemble import AdaBoostRegressor
-import psycopg2
-import psycopg2.extras
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from db_config import *
 import sys
 from nltk.tokenize import RegexpTokenizer
 import matplotlib.pyplot as plt
@@ -222,7 +218,7 @@ class Unvs(object):
         soup=get_soup(url)
         self.zip=soup.find('p',class_='block-normal hide-for-small-only text-small hero-ranking-data-contact').stripped_strings.__next__()[-5::1]
         if self.zip in zips:
-            print('DUPLICATE!')
+            #print('DUPLICATE!')
         zips.append(self.zip)
         info_tags=soup.find_all('span',class_='heading-small text-black text-tight block-flush display-block-for-large-up')
         self.type=info_tags[0].string.strip()
@@ -247,24 +243,6 @@ class Unvs(object):
         type_=['Private, Coed','Public, Coed'].index(self.type)
         return [int(self.rank),int(self.n_ug),type_,self.years,setting,float(self.completion_rate),\
            int(self.cost),self.ea]
-        
-
-def DB_setup():
-        print("Start with existing database: postgres...")
-        try:
-            con= psycopg2.connect("dbname='{0}' user='{1}' password='{2}'".format(db_name, db_user, db_password))
-        except:
-            print('Cannot establish connection, please recheck username and password.')
-            sys.exit()
-        print("Connection established.")        
-        con.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cur=con.cursor()
-        print("Create new database: si507_final_ywangdr, which might take a little time...")
-        cur.execute("CREATE DATABASE si507_final_ywangdr;")
-
-        cur.close()
-        con=psycopg2.connect("dbname=si507_final_ywangdr user='{}' password={}".format(db_user,db_password))
-        return con
 
 
 def mismatch_handle(unvs,words,filter1,filter2):
@@ -321,14 +299,14 @@ def api_get(unvss):
         words,filter1,filter2=mismatch_handle(unvs,words,filter1,filter2)
         fields=r'_fields=school.name,2015.completion.completion_rate_4yr_150nt,2015.cost.attendance.academic_year,2015.cost.attendance.program_year'
         url=url_base+r'&'.join([filter1,filter2,fields])
-        print(url)
+        #print(url)
 
         results=get_results(url)
         assert(results)
-        print(results)
+        #print(results)
         if(len(results)>1):
             for i in range(10):
-                print('*****')
+                #print('*****')
         #most of results have only one element
         for result in results:
             if len(results)>1 and result['school.name']!=unvs.name:
@@ -342,57 +320,13 @@ def api_get(unvss):
 
                 if unvs.cost==None:
                     for i in range(5):
-                        print("MISSING cost:",unvs.name)
+                        #print("MISSING cost:",unvs.name)
                 if unvs.completion_rate==None:
                     for i in range(5):
-                        print("MISSING completion rate:",unvs.name)                
+                        #print("MISSING completion rate:",unvs.name)                
         new_unvss.append(unvs)
 
     return new_unvss
-    
-        
-        
-def create_tables(con,cur):
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS university_basic(
-    name VARCHAR UNIQUE,
-    rank INTEGER,
-    web_url VARCHAR,
-    PRIMARY KEY (name));"""
-    )
-    con.commit()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS university_detail(
-    name VARCHAR UNIQUE,
-    address VARCHAR,
-    year_founded INTEGER,
-    photos_url VARCHAR,
-    n_undergraduate INTEGER,
-    school_type VARCHAR,
-    setting VARCHAR,
-    endowment_amount VARCHAR,
-    FOREIGN KEY (name) REFERENCES university_basic (name),
-    PRIMARY KEY (name));"""
-    )
-    con.commit()
-    
-
-
-def insert_data(con,cur,unvss):
-    for unvs in unvss:
-        basic_tup=(unvs.name,unvs.rank,unvs.page_url)
-        cur.execute("""INSERT INTO university_basic (name,rank,web_url) VALUES (%s,%s,%s);""",basic_tup)
-        con.commit()
-        detail_tup=(unvs.name,unvs.address,unvs.year_founded,unvs.thumbnail,unvs.n_ug,unvs.type,unvs.setting,unvs.endowment)
-        cur.execute("""INSERT INTO university_detail (name,address,year_founded,photos_url,n_undergraduate,school_type,setting,endowment_amount) VALUES (%s,%s,%s,%s,%s,%s,%s,%s);""",detail_tup)
-        con.commit()
-    print("finish insertion.")
-    
-def database_store(unvss):        
-    con=DB_setup()
-    cur=con.cursor()
-    create_tables(con,cur)
-    insert_data(con,cur,unvss)
 
 def split(unvss):
     test_unvss=[]
@@ -405,7 +339,7 @@ def split(unvss):
 
 def train_predict(unvss):
     unvss,test_unvss=split(unvss)
-    dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=300)
+    dtr = AdaBoostRegressor(tree.DecisionTreeRegressor(max_depth=3),n_estimators=1000)
     #dtr=tree.DecisionTreeRegressor(max_depth=3)
     
     X=[]
@@ -427,8 +361,8 @@ def train_predict(unvss):
     test_z=dtr.predict(test_X)
     
     plt.figure()
-    plt.scatter(y, z, c="k", marker='.', label="trained model")
-    plt.scatter(test_y, test_z, c="r", marker='.', label="predicted endowment")
+    plt.scatter(y, z, c="k", marker='.', label="training set")
+    plt.scatter(test_y, test_z, c="r", marker='.', label="testing set")
     plt.xlabel("actual endowment")
     plt.ylabel("prediction")
     plt.title("Adaboost Training Result")
@@ -444,4 +378,3 @@ if __name__=='__main__':
         output_csv(unvss)
     output_train(unvss)
     train_predict(unvss)
-    #database_store(unvss)
